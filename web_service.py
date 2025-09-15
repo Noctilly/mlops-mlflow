@@ -4,12 +4,16 @@ from pydantic import BaseModel
 import pandas as pd
 import os
 
+import random
+
 
 app = FastAPI()
 
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000"))
 
-loaded_model = mlflow.pyfunc.load_model("models:/tracking-quickstart/2")
+current_model = mlflow.pyfunc.load_model("models:/tracking-quickstart/2")
+next_model = current_model
+p = 0.8
 
 
 class Iris(BaseModel):
@@ -24,10 +28,20 @@ async def predict(iris: Iris):
     X = pd.DataFrame(
         [[iris.sepal_length, iris.sepal_width, iris.petal_length, iris.petal_width]]
     )
-    return {f"predicted: {loaded_model.predict(X)[0]}"}
+
+    if random.random() <= p:
+        return {f"predicted: {current_model.predict(X)[0]}"}
+    else:
+        return {f"predicted: {next_model.predict(X)[0]}"}
 
 
-@app.patch("/update-model")
+@app.post("/update-model")
 async def update_model(version: int):
-    global loaded_model
-    loaded_model = mlflow.pyfunc.load_model(f"models:/tracking-quickstart/{version}")
+    global next_model
+    next_model = mlflow.pyfunc.load_model(f"models:/tracking-quickstart/{version}")
+
+
+@app.post("accept-next-model")
+async def accept_next_model():
+    global current_model
+    current_model = next_model
