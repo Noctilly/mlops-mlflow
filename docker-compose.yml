@@ -1,0 +1,29 @@
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow
+    command:
+      - mlflow
+      - server
+      - --host=0.0.0.0
+      - --port=5000
+      - --backend-store-uri=file:///srv/mlruns
+      - --artifacts-destination=/srv/mlartifacts
+      - --serve-artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/srv/mlruns
+      - ./mlartifacts:/srv/mlartifacts
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: iris-service
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+    ports:
+      - "8000:8000"
